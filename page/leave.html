@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leave Application Form</title>
+  </head>
+  <style>
+    .container {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+h1 {
+  text-align: center;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+input[type="text"],
+input[type="email"],
+textarea,
+select {
+  width: 95%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+input[type="date"] {
+  width: calc(100% - 22px); /* Adjust for date input's default arrow button */
+}
+
+button[type="submit"] {
+  width: 100%;
+  padding: 10px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button[type="submit"]:hover {
+  background-color: #0056b3;
+}
+
+  </style>
+  <body>
+    <div class="container">
+      <h1>Leave Application Form</h1>
+      <form id="leaveForm">
+        <label for="firstName">First Name:</label>
+        <input type="text" id="firstName" name="firstName" required />
+
+        <label for="lastName">Last Name:</label>
+        <input type="text" id="lastName" name="lastName" required />
+
+        <label for="affiliationOrPosition">Affiliation or Position:</label>
+        <input
+          type="text"
+          id="affiliationOrPosition"
+          name="affiliationOrPosition"
+        />
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required />
+
+        <label for="phoneNumber">Phone Number:</label>
+        <input type="text" id="phoneNumber" name="phoneNumber" required />
+
+        <label for="leaveType">Leave Type:</label>
+        <select id="leaveType" name="leaveType" required>
+          <option value="ลาป่วย">ลาป่วย</option>
+          <option value="ลากิจ">ลากิจ</option>
+          <option value="พักร้อน">พักร้อน</option>
+          <option value="อื่นๆ" selected>อื่นๆ</option>
+        </select>
+
+        <label for="reason">Reason:</label>
+        <textarea id="reason" name="reason" required></textarea>
+
+        <label for="startDate">Start Date:</label>
+        <input type="date" id="startDate" name="startDate" required />
+        <label for="endDate">End Date:</label>
+        <input type="date" id="endDate" name="endDate" required />
+        <br><hr><br>
+        <button type="submit">Submit</button>
+      </form>
+    </div>
+    <script>
+      document
+  .getElementById('leaveForm')
+  .addEventListener('submit', function (event) {
+    event.preventDefault();
+    const formData = new FormData(this);
+    const requestData = {
+      firstName: formData.get('firstName'),
+      lastName: formData.get('lastName'),
+      affiliationOrPosition: formData.get('affiliationOrPosition'),
+      email: formData.get('email'),
+      phoneNumber: formData.get('phoneNumber'),
+      leaveType: formData.get('leaveType'),
+      reason: formData.get('reason'),
+      startDate: formData.get('startDate'),
+      endDate: formData.get('endDate'),
+    };
+
+    // Check if leave type is "พักร้อน" and if start date is at least 3 days in advance
+    if (
+      requestData.leaveType === 'พักร้อน' &&
+      new Date(requestData.startDate) - new Date() < 3 * 24 * 60 * 60 * 1000
+    ) {
+      alert('กรุณาแจ้งลาพักร้อนล่วงหน้าอย่างน้อย 3 วัน');
+      return; // Stop form submission
+    }
+
+    // Check if leave type is "พักร้อน" and if there are no more than 2 days between start and end date
+    if (
+      requestData.leaveType === 'พักร้อน' &&
+      (new Date(requestData.endDate) - new Date(requestData.startDate)) / (24 * 60 * 60 * 1000) > 1
+    ) {
+      alert('กรุณาแจ้งลาพักร้อนติดต่อกันได้ไม่เกิน 2 วัน');
+      return; // Stop form submission
+    }
+
+    // Check if start date is not in the past
+    if (new Date(requestData.startDate) < new Date()) {
+      alert('ไม่อนุญาติให้บันทึกวันลาย้อนหลัง');
+      return; // Stop form submission
+    }
+
+    // Post leave data to the server
+    fetch('http://localhost:3000/leave', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestData),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log('Success:', data);
+        alert('บันทึกสำเร็จ');
+        location.reload();
+        // Handle success response here
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+      });
+  });
+
+    </script>
+  </body>
+</html>

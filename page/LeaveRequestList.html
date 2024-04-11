@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leave Request List</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .card {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+      }
+
+      .card p {
+        margin: 5px 0;
+      }
+
+      .card p strong {
+        font-weight: bold;
+      }
+
+      .card hr {
+        border-top: 1px solid #ccc;
+        margin-top: 10px;
+        margin-bottom: 10px;
+      }
+
+      .status-button {
+        display: inline-block;
+        padding: 5px 10px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .status-button.delete {
+        background-color: #dc3535;
+      }
+
+      .status-button.reject {
+        background-color: #f4aa41;
+      }
+      #searchInput {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-sizing: border-box;
+        font-size: 16px;
+      }
+
+      #searchInput:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Leave Request List</h1>
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Search by name or date..."
+      />
+      <div id="leave-list">
+        <!-- ข้อมูลจะถูกแสดงที่นี่ -->
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const leaveList = document.getElementById('leave-list');
+        const searchInput = document.getElementById('searchInput');
+
+        fetch('http://localhost:3000/leave')
+          .then((response) => response.json())
+          .then((data) => {
+            function filterData() {
+              const searchText = searchInput.value.toLowerCase();
+              const filteredData = data.filter((leave) => {
+                const fullName =
+                  `${leave.firstName} ${leave.lastName}`.toLowerCase();
+                const startDate = new Date(leave.startDate).toLocaleDateString(
+                  'en-GB',
+                  { year: 'numeric', month: '2-digit', day: '2-digit' },
+                );
+                return (
+                  fullName.includes(searchText) ||
+                  startDate.includes(searchText)
+                );
+              });
+              displayData(filteredData);
+            }
+
+            displayData(data);
+
+            searchInput.addEventListener('input', filterData);
+          })
+          .catch((error) => {
+            console.error('Error fetching data:', error);
+            leaveList.innerHTML =
+              'Error fetching data. Please try again later.';
+          });
+      });
+
+      function displayData(data) {
+        const leaveList = document.getElementById('leave-list');
+        leaveList.innerHTML = '';
+        if (data && Array.isArray(data)) {
+          // เรียงลำดับข้อมูลตามวันเวลาที่บันทึก
+          data.sort((a, b) =>
+            a.recordedDateTime.localeCompare(b.recordedDateTime),
+          );
+          data.forEach((leave) => {
+            const leaveItem = document.createElement('div');
+            leaveItem.classList.add('card');
+            const formattedStartDate = new Date(
+              leave.startDate,
+            ).toLocaleDateString('en-GB', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            });
+            const formattedEndDate = new Date(leave.endDate).toLocaleDateString(
+              'en-GB',
+              { year: 'numeric', month: 'long', day: 'numeric' },
+            );
+            const formattedRecordedDateTime =
+              new Date(leave.recordedDateTime).toLocaleDateString('en-GB', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              }) +
+              ' At ' +
+              new Date(leave.recordedDateTime).toLocaleTimeString('en-GB');
+            leaveItem.innerHTML = `
+                <p><strong>Name:</strong> ${leave.firstName} ${leave.lastName}</p>
+                <p><strong>Affiliation/Position:</strong> ${leave.affiliationOrPosition}</p>
+                <p><strong>Email:</strong> ${leave.email}</p>
+                <p><strong>Phone Number:</strong> ${leave.phoneNumber}</p>
+                <p><strong>Leave Type:</strong> ${leave.leaveType}</p>
+                <p><strong>Reason:</strong> ${leave.reason}</p>
+                <p><strong>Start Date:</strong> ${formattedStartDate}</p>
+                <p><strong>End Date:</strong> ${formattedEndDate}</p>
+                <p><strong>Recorded Date Time:</strong> ${formattedRecordedDateTime}</p>
+                <p><strong>Status:</strong> ${leave.status}</p>
+                ${
+                  leave.status === 'รอพิจารณา'
+                    ? `
+                    <button class="status-button" onclick="updateLeaveStatus('${leave._id}', 'อนุมัติ')">อนุมัติ</button>
+                    <button class="status-button reject" onclick="updateLeaveStatus('${leave._id}', 'ไม่อนุมัติ')">ไม่อนุมัติ</button>
+                `
+                    : ''
+                }
+                <button class="status-button delete" onclick="deleteLeave('${leave._id}')">ลบ</button>
+                <hr>
+            `;
+            leaveList.appendChild(leaveItem);
+          });
+        } else {
+          leaveList.innerHTML = 'Unable to access data.';
+        }
+      }
+
+      function updateLeaveStatus(id, status) {
+        fetch(`http://localhost:3000/leave/${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            alert('Leave status updated successfully!');
+            location.reload();
+          })
+          .catch((error) => {
+            console.error('Error updating leave status:', error);
+            alert('Error updating leave status. Please try again later.');
+          });
+      }
+
+      function deleteLeave(id) {
+        if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบการลานี้?')) {
+          fetch(`http://localhost:3000/leave/${id}`, {
+            method: 'DELETE',
+          })
+            .then((response) => {
+              if (response.ok) {
+                return response.json();
+              }
+              throw new Error('ไม่สามารถลบการลาได้');
+            })
+            .then((data) => {
+              alert('การลาถูกลบเรียบร้อยแล้ว!');
+              location.reload();
+            })
+            .catch((error) => {
+              console.error('เกิดข้อผิดพลาดในการลบการลา:', error);
+              alert('เกิดข้อผิดพลาดในการลบการลา กรุณาลองใหม่อีกครั้ง');
+            });
+        }
+      }
+    </script>
+  </body>
+</html>
